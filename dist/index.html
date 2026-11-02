@@ -10,11 +10,14 @@
 </head>
 <body>
 <main>
-  <header><span class="title">AFTER HOURS</span><span class="live"><i></i><span id="status">the cafe is open</span></span></header>
   <div class="painting" id="painting">
     <img id="poster" src="assets/cafe.jpg" alt="An orange cat in a green cardigan vibe-codes on a laptop in an evening cafe, with coffee and a croissant.">
     <canvas id="scene" width="1024" height="1024" aria-label="A living painting: lamps sway, windows flicker, and steam rises from a coffee cup."></canvas>
     <div class="loading" id="loading">Turning on the lights...</div>
+    <div class="tempo-control">
+      <label for="bpm">TEMPO <output id="bpmValue" for="bpm">74 BPM</output></label>
+      <input id="bpm" type="range" min="50" max="140" step="1" value="74" aria-label="Music tempo in BPM" title="Music tempo">
+    </div>
     <div class="soundbar" id="soundbar">
       <button id="music" aria-label="Play hip-hop" aria-pressed="false" title="Slow instrumental hip-hop">
         <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/></svg>

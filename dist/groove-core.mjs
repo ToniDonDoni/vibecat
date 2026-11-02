@@ -1,12 +1,18 @@
 // Every sound is synthesized mathematically. No recordings, samples or network audio.
-export const SAMPLE_RATE=24000, BPM=74, BAR_SECONDS=240/BPM;
+export const SAMPLE_RATE=24000, BPM=74, MIN_BPM=50, MAX_BPM=140, BAR_SECONDS=240/BPM;
 const TAU=Math.PI*2, hz=m=>440*2**((m-69)/12);
 export function randomGenerator(seed){let x=seed>>>0||1;return()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296;};}
 function voice(seconds,fn){const a=new Float32Array(Math.ceil(seconds*SAMPLE_RATE));for(let i=0;i<a.length;i++)a[i]=fn(i/SAMPLE_RATE,i);return a;}
 function lowpass(a,cutoff){let z=0;const k=1-Math.exp(-TAU*cutoff/SAMPLE_RATE);for(let i=0;i<a.length;i++){z+=k*(a[i]-z);a[i]=z;}return a;}
 function fade(a,seconds=.012){const n=Math.min(a.length,Math.ceil(seconds*SAMPLE_RATE));for(let i=0;i<n;i++)a[a.length-n+i]*=1-i/n;return a;}
 export class GrooveSynth{
-  constructor(seed=12573){this.rng=randomGenerator(seed);this.cache=new Map();this.bank=this.makeDrums();}
+  constructor(seed=12573,bpm=BPM){this.rng=randomGenerator(seed);this.cache=new Map();this.bank=this.makeDrums();this.setBpm(bpm);}
+  setBpm(bpm){
+    const value=Number(bpm);
+    if(!Number.isFinite(value)||value<MIN_BPM||value>MAX_BPM)throw RangeError('BPM out of range');
+    this.bpm=value;
+  }
+  get barSeconds(){return 240/this.bpm;}
   makeDrums(){
     const r=this.rng;let phase=0;
     const kick=voice(.54,(t)=>{
@@ -46,7 +52,7 @@ export class GrooveSynth{
     });this.cache.set(key,fade(a));return a;
   }
   planBar(bar){
-    const r=this.rng,step=60/BPM/4,phrase=Math.floor(bar/4)%4;
+    const r=this.rng,step=60/this.bpm/4,phrase=Math.floor(bar/4)%4;
     const harmonies=[[53,56,60,63,67],[53,57,60,62,65],[51,55,58,62,65],[51,55,58,62,67]];
     const roots=[29,34,27,36],root=roots[phrase];
     const chord=harmonies[phrase],events=[];
@@ -79,8 +85,8 @@ export class GrooveSynth{
     return{events,bar,breakdown,chord:phrase};
   }
   renderBar(bar){
-    const plan=this.planBar(bar),n=Math.ceil((BAR_SECONDS+3.0)*SAMPLE_RATE);
-    const left=new Float32Array(n),right=new Float32Array(n),step=60/BPM/4;
+    const plan=this.planBar(bar),n=Math.ceil((this.barSeconds+3.0)*SAMPLE_RATE);
+    const left=new Float32Array(n),right=new Float32Array(n),step=60/this.bpm/4;
     const mix=(sound,time,gain,pan,rate=1)=>{
       const start=Math.round(time*SAMPLE_RATE),gl=gain*Math.sqrt((1-pan)*.5),gr=gain*Math.sqrt((1+pan)*.5);
       const end=Math.min(n-start,Math.floor(sound.length/rate));
@@ -101,7 +107,7 @@ export class GrooveSynth{
     let dust=0;const r=this.rng;
     for(let i=0;i<n;i++){
       const t=i/SAMPLE_RATE;
-      if(t<BAR_SECONDS){dust+=.16*((r()*2-1)-dust);const edge=Math.min(1,t*200,(BAR_SECONDS-t)*200);left[i]+=dust*.003*edge;right[i]+=dust*.003*edge;}
+      if(t<this.barSeconds){dust+=.16*((r()*2-1)-dust);const edge=Math.min(1,t*200,(this.barSeconds-t)*200);left[i]+=dust*.003*edge;right[i]+=dust*.003*edge;}
       left[i]=Math.tanh(left[i]*1.12)*.84;right[i]=Math.tanh(right[i]*1.12)*.84;
     }
     return{left,right,plan};
