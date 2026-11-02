@@ -33,6 +33,8 @@ jobs:
           node --check dist/groove-core.mjs
       - name: Validate source, assets, and generated audio
         run: node scripts/check.mjs
+      - name: Test tempo controls and audio rescheduling
+        run: node scripts/check-ui.mjs
       - name: Upload static website
         uses: actions/upload-pages-artifact@v4
         with:
