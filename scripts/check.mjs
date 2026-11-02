@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {GrooveSynth,SAMPLE_RATE,BAR_SECONDS} from '../dist/groove-core.mjs';
+import {GrooveSynth,SAMPLE_RATE,BAR_SECONDS,BPM,MIN_BPM,MAX_BPM} from '../dist/groove-core.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ignored=new Set(['.git','.venv','__pycache__','node_modules','output']);
@@ -25,6 +25,10 @@ function inspect(directory){
 inspect(root);
 const dist=path.join(root,'dist'),html=fs.readFileSync(path.join(dist,'index.html'),'utf8');
 assert(html.includes('lang="en"'),'The document must declare English');
+assert(html.includes('id="bpm"')&&html.includes('id="bpmValue"'),'The tempo slider and readout must exist');
+assert(!html.includes('<header>')&&!html.includes('the cafe is open'),'Removed top labels must stay hidden');
+const css=fs.readFileSync(path.join(dist,'style.css'),'utf8');
+assert(!css.includes("content:'74 BPM'"),'Mobile tempo must not be hard-coded in CSS');
 for(const match of html.matchAll(/(?:src|href)="([^"#]+)"/g)){
   if(/^(?:https?:|data:)/.test(match[1]))continue;
   assert(fs.existsSync(path.join(dist,match[1])),`Missing local resource: ${match[1]}`);
@@ -62,4 +66,23 @@ for(let bar=0;bar<bars;bar++){
 assert(peak<.95,'The overlapping mix must retain signal headroom');
 assert(glitches>0&&breakdowns>0,'Phrase variation must occur');
 assert(synth.cache.size<=40,'The note cache must stay bounded');
+
+// A new tempo changes both scheduled bar length and note event spacing.
+assert.equal(BPM,74);
+assert.equal(MIN_BPM,50);
+assert.equal(MAX_BPM,140);
+const slow=new GrooveSynth(112026,60),fast=new GrooveSynth(112026,120);
+assert.equal(slow.barSeconds,4);
+assert.equal(fast.barSeconds,2);
+const slowKick=slow.planBar(0).events.filter(e=>e.kind==='kick')[1];
+const fastKick=fast.planBar(0).events.filter(e=>e.kind==='kick')[1];
+assert(slowKick.time>fastKick.time,'A lower BPM must delay drum events');
+assert.equal(slow.renderBar(1).left.length,Math.ceil((slow.barSeconds+3)*SAMPLE_RATE));
+assert.equal(fast.renderBar(1).left.length,Math.ceil((fast.barSeconds+3)*SAMPLE_RATE));
+fast.setBpm(90);
+assert.equal(fast.barSeconds,240/90,'Tempo changes must affect the next bar');
+assert.equal(fast.renderBar(2).left.length,Math.ceil((fast.barSeconds+3)*SAMPLE_RATE));
+assert.throws(()=>fast.setBpm(0),RangeError);
+assert.throws(()=>fast.setBpm(NaN),RangeError);
+assert.throws(()=>fast.setBpm(141),RangeError);
 console.log(`Checked ${checked} text files, all local assets, and ${bars} generated bars. Peak: ${peak.toFixed(3)}. No invalid samples.`);
