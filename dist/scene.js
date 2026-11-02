@@ -68,7 +68,6 @@ function frame(now){
 function updatePause(){
   document.getElementById('pause').setAttribute('aria-label',paused?'Resume animation':'Pause animation');
   document.getElementById('pauseIcon').innerHTML=paused?'<path d="m8 5 11 7-11 7Z"/>':'<path d="M8 5v14M16 5v14"/>';
-  document.getElementById('status').textContent=paused?'a quiet frame':'the cafe is open';
 }
 document.getElementById('pause').onclick=()=>{paused=!paused;last=null;updatePause();};
 document.getElementById('shuffle').onclick=()=>{if(!ready)return;resetRhythm();render(0);};
