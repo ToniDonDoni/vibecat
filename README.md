@@ -11,7 +11,7 @@ A living, code-painted cafe scene with an orange cat, a laptop, coffee, and an e
 - Individual steam particles rise, curl, disperse, and respawn above the coffee.
 - Light rain crosses the unobstructed window areas, and the cat occasionally blinks.
 - The animation runs continuously without a timeline reset. Pause it, change the evening rhythm, or enter full screen using the lower-right controls.
-- Select **Play the groove** in the lower-left corner to start the music. A volume slider appears next to it. Audio starts only after a user gesture and can be paused independently of the animation.
+- Select **Play the groove** in the lower-left corner to start the music. The tempo slider adjusts the beat from 50 to 140 BPM (74 by default), including during playback. A separate volume slider appears while music plays. Audio starts only after a user gesture and can be paused independently of the animation.
 - The animation respects the browser's reduced-motion preference. Music remains opt-in.
 
 ## How the image is made
@@ -36,7 +36,7 @@ The drawing uses fixed random seeds, so the same code and dependency versions re
 
 `dist/groove-core.mjs` is a small procedural instrument and sequencer written in plain JavaScript. It computes PCM samples at 24 kHz. It does not download drum samples, stream a track, or call a music-generation service. There are no vocals.
 
-The 74 BPM, 4/4 arrangement combines:
+The 4/4 arrangement defaults to 74 BPM and combines:
 
 - **Kick:** a sine oscillator with a fast downward pitch envelope, a short noise transient, exponential decay, and soft saturation.
 - **Snare:** filtered random noise, decaying resonances, and quiet delayed noise bursts.
@@ -47,7 +47,7 @@ The 74 BPM, 4/4 arrangement combines:
 
 A stable backbeat anchors the groove. Odd sixteenths are delayed to create swing, while small timing and velocity changes keep it loose. A 16-bar harmonic cycle supplies continuity; probabilistic hats, ghost notes, fills, sparse breakdowns, and glitch events create ongoing variation. The rhythm stays recognizable instead of becoming an unstructured random sequence.
 
-`dist/music.mjs` schedules newly rendered bars with the Web Audio clock, several seconds ahead of playback. Each bar includes its sound tails, which overlap the next bar rather than being cut at the boundary. Ended audio nodes disconnect, and the synthesis cache contains only the small set of notes used by the arrangement. Playback continues generating bars for as long as it is enabled. Volume changes are smoothed, and output filtering and compression tame the mix.
+`dist/music.mjs` schedules newly rendered bars with the Web Audio clock, several seconds ahead of playback. Each bar includes its sound tails, which overlap the next bar rather than being cut at the boundary. Changing BPM rebuilds the queued bars at the selected tempo and fades the audio across the transition. Ended audio nodes disconnect, and the synthesis cache contains only the small set of notes used by the arrangement. Playback continues generating bars for as long as it is enabled. Volume changes are smoothed, and output filtering and compression tame the mix.
 
 ## Run locally
 
@@ -121,7 +121,7 @@ The deployment workflow uses the official [checkout](https://github.com/actions/
 
 ## Privacy
 
-The application has no accounts, analytics, tracking scripts, API keys, or external media services. Its only browser storage entry remembers the visitor's chosen music volume. Raster assets contain no EXIF identity or location information. The live URL at the top necessarily includes the account namespace required by the standard Pages address.
+The application has no accounts, analytics, tracking scripts, API keys, or external media services. Its browser storage entries remember the visitor's chosen music volume and tempo. Raster assets contain no EXIF identity or location information. The live URL at the top necessarily includes the account namespace required by the standard Pages address.
 
 ## License
 
