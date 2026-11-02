@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141c21">
+<meta name="description" content="A cat vibe-coding in a late-night cafe. A living pointillist painting with swinging lamps, flickering windows, coffee steam, and an endless procedural hip-hop groove.">
+<title>VibeCat After Hours</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%90%88%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header><span class="title">AFTER HOURS</span><span class="live"><i></i><span id="status">the cafe is open</span></span></header>
+  <div class="painting" id="painting">
+    <img id="poster" src="assets/cafe.jpg" alt="An orange cat in a green cardigan vibe-codes on a laptop in an evening cafe, with coffee and a croissant.">
+    <canvas id="scene" width="1024" height="1024" aria-label="A living painting: lamps sway, windows flicker, and steam rises from a coffee cup."></canvas>
+    <div class="loading" id="loading">Turning on the lights...</div>
+    <div class="soundbar" id="soundbar">
+      <button id="music" aria-label="Play hip-hop" aria-pressed="false" title="Slow instrumental hip-hop">
+        <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/></svg>
+        <span id="musicLabel">PLAY THE GROOVE</span>
+      </button>
+      <input id="volume" type="range" min="0" max="100" value="62" aria-label="Music volume" title="Music volume">
+    </div>
+    <div class="toolbar">
+      <button id="pause" aria-label="Pause animation" title="Pause / Space"><svg id="pauseIcon" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button>
+      <button id="shuffle" aria-label="New evening rhythm" title="New evening rhythm"><svg viewBox="0 0 24 24"><path d="M4 7h3c4 0 6 10 10 10h3M17 14l3 3-3 3M4 17h3c1.6 0 3-1.7 4.3-4M14 9c1-1.3 2-2 3-2h3M17 4l3 3-3 3"/></svg></button>
+      <button id="fullscreen" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4"/></svg></button>
+    </div>
+  </div>
+  <footer><span>the cat codes. the city stays awake.</span><span class="hint">tap a lamp</span></footer>
+</main>
+<script src="scene.js"></script>
+<script type="module" src="music.mjs"></script>
+</body>
+</html>

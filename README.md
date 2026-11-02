@@ -1,0 +1,128 @@
+Live site: [VibeCat After Hours](https://tonidondoni.github.io/vibecat/)
+
+# VibeCat After Hours
+
+A living, code-painted cafe scene with an orange cat, a laptop, coffee, and an endless instrumental hip-hop groove. The 1024 x 1024 artwork is inspired by neo-impressionism and pointillism. Everything runs locally in the browser after the static assets have loaded.
+
+## Experience
+
+- Two lamps swing with different periods and phases. Tap a lamp to switch it on or off.
+- Distant windows turn on and off after randomized dwell times.
+- Individual steam particles rise, curl, disperse, and respawn above the coffee.
+- Light rain crosses the unobstructed window areas, and the cat occasionally blinks.
+- The animation runs continuously without a timeline reset. Pause it, change the evening rhythm, or enter full screen using the lower-right controls.
+- Select **Play the groove** in the lower-left corner to start the music. A volume slider appears next to it. Audio starts only after a user gesture and can be paused independently of the animation.
+- The animation respects the browser's reduced-motion preference. Music remains opt-in.
+
+## How the image is made
+
+The illustration is drawn entirely by `scripts/draw_vibecat.py`, using Python, Pillow, and NumPy. It does not use a diffusion model, downloaded artwork, or a reference photograph.
+
+1. A hand-authored composition defines the cafe, buildings, cat, laptop, table, coffee, and croissant as filled shapes and sampled Bezier curves.
+2. A small palette establishes the warm interior lighting and cool evening window colors.
+3. Three passes of randomized pigment dabs sample the underlying colors and add neighboring complementary colors. Short directional strokes add fur detail; fine curves add whiskers.
+4. A larger working raster is downsampled to 1024 x 1024, then a subtle grain is added.
+5. The script writes an actual uncompressed 24-bit BMP itself: a file header, a DIB header, and bottom-up BGR pixel rows with row padding. Pillow also saves a JPEG copy.
+
+The drawing uses fixed random seeds, so the same code and dependency versions reproduce the same pixels. A texture pass intentionally introduces the appearance of irregular paint without requiring a learned image generator.
+
+## How the animation is made
+
+`scripts/make_layers.py` reuses the drawing code to produce a background without fixed lamps or steam, two transparent lamp sprites, and window-position data. The generated assets are committed in `dist/assets/` so the website requires no Python installation or build step.
+
+`dist/scene.js` composites those layers with the Canvas 2D API. Pendulum angles combine sine waves; window brightness eases toward randomly selected states; steam and rain use small bounded particle collections. Each particle fades or exits before respawning. The result has continuous motion and recurring motifs without an obvious loop boundary. Random parameters are regenerated when the page is loaded or the evening rhythm is changed.
+
+## How the music is made
+
+`dist/groove-core.mjs` is a small procedural instrument and sequencer written in plain JavaScript. It computes PCM samples at 24 kHz. It does not download drum samples, stream a track, or call a music-generation service. There are no vocals.
+
+The 74 BPM, 4/4 arrangement combines:
+
+- **Kick:** a sine oscillator with a fast downward pitch envelope, a short noise transient, exponential decay, and soft saturation.
+- **Snare:** filtered random noise, decaying resonances, and quiet delayed noise bursts.
+- **Hi-hats and rim:** short high-frequency noise and decaying sinusoidal partials, with velocity differences and alternating stereo positions.
+- **Bass:** a low fundamental with a few harmonics and a short amplitude envelope.
+- **Electric-piano-like chords:** frequency modulation, detuned partials, exponential decay, low-pass filtering, subtle pitch drift, and quiet stereo delay taps.
+- **Texture and glitches:** very quiet filtered noise, held and quantized noise accents, occasional pitched repeats, and phrase-ending drum fills.
+
+A stable backbeat anchors the groove. Odd sixteenths are delayed to create swing, while small timing and velocity changes keep it loose. A 16-bar harmonic cycle supplies continuity; probabilistic hats, ghost notes, fills, sparse breakdowns, and glitch events create ongoing variation. The rhythm stays recognizable instead of becoming an unstructured random sequence.
+
+`dist/music.mjs` schedules newly rendered bars with the Web Audio clock, several seconds ahead of playback. Each bar includes its sound tails, which overlap the next bar rather than being cut at the boundary. Ended audio nodes disconnect, and the synthesis cache contains only the small set of notes used by the arrangement. Playback continues generating bars for as long as it is enabled. Volume changes are smoothed, and output filtering and compression tame the mix.
+
+## Run locally
+
+Serve the existing static files with Python 3:
+
+```sh
+python3 -m http.server 8000 --directory dist
+```
+
+Open `http://localhost:8000/`. Use an HTTP server rather than opening the HTML file directly, because the page loads a JavaScript module and a JSON asset.
+
+## Regenerate the artwork
+
+Python 3.10 or newer is recommended.
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/draw_vibecat.py
+python scripts/make_layers.py
+```
+
+The first command that draws artwork writes BMP and JPEG files into `output/`. The layer generator updates the committed web assets in `dist/assets/`. Commit those updated assets when changing the drawing.
+
+## Check the project
+
+Node.js 22 or newer is recommended. There are no JavaScript package dependencies.
+
+```sh
+node scripts/check.mjs
+```
+
+The check verifies English-only source text, local asset references, reproducible synthesis for a fixed seed, finite stereo audio samples, signal headroom, and bounded note caching over 32 rendered bars.
+
+## Publish to GitHub Pages
+
+The workflow `.github/workflows/pages.yml` publishes only `dist/`. It runs on pushes to `main` and can also be started with **Actions > Publish to GitHub Pages > Run workflow**.
+
+For initial setup, select **Settings > Pages > Build and deployment > Source > GitHub Actions**. Once Pages is configured, successful workflow runs update the live site automatically. Relative asset paths support deployment under a repository subdirectory as well as at a domain root.
+
+The workflow checks the JavaScript and project contents, configures Pages, uploads the static artifact, and deploys it to the `github-pages` environment. No personal access token or custom repository secret is required for routine deployment.
+
+## Project layout
+
+| Path | Purpose |
+| --- | --- |
+| `dist/index.html` | Accessible page structure and controls |
+| `dist/style.css` | Responsive gallery layout |
+| `dist/scene.js` | Canvas animation and interactions |
+| `dist/groove-core.mjs` | Pure procedural synthesis and musical arrangement |
+| `dist/music.mjs` | Browser audio scheduling and music controls |
+| `dist/assets/` | Generated raster layers and window positions |
+| `scripts/draw_vibecat.py` | Complete original drawing and direct BMP writer |
+| `scripts/make_layers.py` | Animated-layer asset generator |
+| `scripts/check.mjs` | Source, asset, and audio checks |
+| `.github/workflows/pages.yml` | Automatic and manual Pages publication |
+
+## References and attribution
+
+The drawing, animation, synthesis, and arrangement algorithms were written specifically for this project. No third-party application repository or algorithm implementation was copied or adapted. The following documentation informed the implementation:
+
+- [Pillow documentation](https://pillow.readthedocs.io/en/stable/) for raster drawing, resizing, and image encoding.
+- [NumPy documentation](https://numpy.org/doc/stable/) for pixel arrays and deterministic noise.
+- [MDN: Advanced techniques - creating and sequencing audio](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Advanced_techniques) for sound synthesis and audio-clock scheduling concepts.
+- [W3C Web Audio API specification](https://www.w3.org/TR/webaudio/) for audio buffers, scheduled sources, filters, and compression.
+- [MDN Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) for browser raster compositing.
+- [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) for deployment configuration.
+
+The deployment workflow uses the official [checkout](https://github.com/actions/checkout), [setup-node](https://github.com/actions/setup-node), [configure-pages](https://github.com/actions/configure-pages), [upload-pages-artifact](https://github.com/actions/upload-pages-artifact), and [deploy-pages](https://github.com/actions/deploy-pages) actions. These are deployment dependencies, not sources of the music or animation algorithms.
+
+## Privacy
+
+The application has no accounts, analytics, tracking scripts, API keys, or external media services. Its only browser storage entry remembers the visitor's chosen music volume. Raster assets contain no EXIF identity or location information. The live URL at the top necessarily includes the account namespace required by the standard Pages address.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
