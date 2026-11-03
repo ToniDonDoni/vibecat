@@ -13,6 +13,57 @@ A living, code-painted cafe scene with an orange cat, a laptop, coffee, and an e
 - The animation runs continuously without a timeline reset. Pause it, change the evening rhythm, or enter full screen using the lower-right controls.
 - Select **Play the groove** in the lower-left corner to start the music. The tempo slider adjusts the beat from 50 to 140 BPM (74 by default), including during playback. A separate volume slider appears while music plays. Audio starts only after a user gesture and can be paused independently of the animation.
 - The animation respects the browser's reduced-motion preference. Music remains opt-in.
+- Move the pointer across the painting for a small depth-based viewpoint change.
+  **3D ON/OFF** toggles it; **VIEW** provides a keyboard-accessible horizontal angle.
+
+## Depth parallax experiment
+
+This branch uses a real Depth Anything V2 Small FP16 prediction of `assets/cafe.jpg`.
+The cat, laptop and foreground table move relative to the distant windows. It is
+a limited 2.5D viewpoint shift, not a complete 3D reconstruction. Large rotations
+or newly revealed surfaces are not available from one image.
+
+Depth is baked once into `dist/assets/cafe-depth.png`. The browser loads that map
+once and warps the existing live Canvas painting with WebGL. No model, Python
+server, account, API key or remote inference is needed during playback. Lamps,
+steam, rain, blink animation and music keep their original implementations. The
+WebGL output never becomes input to the source painting. The fixed depth map does
+not follow the small moving lamps and steam exactly; that approximation is part
+of this first experiment.
+
+Pointer movement is smoothed and returns to center on exit. The effect starts
+disabled with reduced motion. A missing map or unavailable WebGL leaves the
+original painting usable. The controls remain outside the warped image. A small
+crop leaves room for near layers to shift without exposing the frame edges.
+
+To regenerate depth on an Apple Silicon Mac, use Python 3.11 with the optional
+packages in `scripts/depth-requirements.txt`, then run:
+
+```sh
+python scripts/make_depth.py --model PATH_TO/DepthAnythingV2SmallF16.mlpackage
+```
+
+The official package is [Apple's Core ML Small FP16 model](https://huggingface.co/apple/coreml-depth-anything-v2-small).
+Its pinned revision, source/depth/weights hashes and package versions are recorded
+in `dist/assets/cafe-depth.json`. The model is licensed Apache-2.0. Letterboxing
+preserves the square image's proportions in the 518 x 392 model input; prediction
+padding is removed before saving the 512 x 512 map. White means nearer, not a
+distance in meters. Timing reports stay under ignored `output/depth/`.
+
+An optional browser check requires Playwright and Chromium, with the static server
+already running. Set `PLAYWRIGHT_MODULE` for an existing Playwright installation
+and `BROWSER_EXECUTABLE` for an existing browser if needed:
+
+```sh
+VIBECAT_URL=http://127.0.0.1:8000/ node scripts/check-parallax.mjs
+```
+
+It checks visible image changes, unchanged source pixels while the camera moves,
+live animation, lamp clicks, controls, reduced motion, WebGL fallback, one depth
+load, no external runtime requests, and 390/320 px layouts. Captures and measured
+display callback throughput are saved in ignored `output/parallax-check/`. These
+short desktop-browser checks do not establish physical-phone or sustained 60 fps
+performance.
 
 ## How the image is made
 
@@ -98,12 +149,16 @@ The workflow checks the JavaScript and project contents, configures Pages, uploa
 | `dist/index.html` | Accessible page structure and controls |
 | `dist/style.css` | Responsive gallery layout |
 | `dist/scene.js` | Canvas animation and interactions |
+| `dist/parallax.js` | Mouse-controlled WebGL depth warp of the live painting |
+| `dist/assets/cafe-depth.png`, `cafe-depth.json` | Baked neural depth and provenance |
 | `dist/groove-core.mjs` | Pure procedural synthesis and musical arrangement |
 | `dist/music.mjs` | Browser audio scheduling and music controls |
 | `dist/assets/` | Generated raster layers and window positions |
 | `scripts/draw_vibecat.py` | Complete original drawing and direct BMP writer |
 | `scripts/make_layers.py` | Animated-layer asset generator |
 | `scripts/check.mjs` | Source, asset, and audio checks |
+| `scripts/make_depth.py` | Optional local Core ML depth baking |
+| `scripts/check-parallax.mjs` | Browser checks and parallax captures |
 | `.github/workflows/pages.yml` | Automatic and manual Pages publication |
 
 ## References and attribution
