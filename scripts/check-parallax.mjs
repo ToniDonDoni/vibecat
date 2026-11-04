@@ -16,8 +16,17 @@ try{
   let page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
   page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
   await page.goto(url);await page.waitForFunction(()=>window.vibecatDepth?.status().textureVersion>0);
+  assert.equal(await page.locator('#music').getAttribute('aria-pressed'),'false','Page load should be silent');
+  assert.equal(await page.locator('#volume').isVisible(),false,'Volume should start hidden');
   await page.getByRole('button',{name:'Pause animation',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#music').getAttribute('aria-pressed')==='true');
+  assert(await page.locator('#volume').isVisible(),'First page click did not reveal volume');
+  await page.getByRole('button',{name:'Pause hip-hop',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#music').getAttribute('aria-pressed')==='false');
+  const firstArt=await page.locator('#painting').boundingBox();
+  await page.mouse.click(firstArt.x+firstArt.width*.5,firstArt.y+firstArt.height*.4);
   await page.waitForTimeout(100);
+  assert.equal(await page.locator('#music').getAttribute('aria-pressed'),'false','Later page click undid a manual pause');
   const clean=await page.locator('#scene').evaluate(c=>c.toDataURL());
   const box=await page.locator('#painting').boundingBox();
   await page.mouse.move(box.x+box.width*.08,box.y+box.height*.5);await page.waitForTimeout(450);
@@ -92,7 +101,12 @@ try{
   page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
   await page.addInitScript(()=>{window.__touchCancels=0;document.addEventListener('pointercancel',()=>window.__touchCancels++);});
   await page.goto(url);await page.waitForFunction(()=>window.vibecatDepth?.status().textureVersion>0);
+  assert.equal(await page.locator('#music').getAttribute('aria-pressed'),'false');
+  await page.touchscreen.tap(40,40);
+  await page.waitForFunction(()=>document.querySelector('#music').getAttribute('aria-pressed')==='true');
+  assert(await page.locator('#volume').isVisible(),'First touch on empty page space did not start music and reveal volume');
   await page.getByRole('button',{name:'Pause animation',exact:true}).tap();
+  assert.equal(await page.locator('#music').getAttribute('aria-pressed'),'true','Later animation control tap paused music');
   const touchSession=await context.newCDPSession(page);
   const touchBox=await page.locator('#painting').boundingBox();
   const from={x:touchBox.x+touchBox.width*.2,y:touchBox.y+touchBox.height*.35};
@@ -131,6 +145,18 @@ try{
   assert.notEqual(await page.locator('#scene').evaluate(c=>getComputedStyle(c).touchAction),'none','Depth off still blocks ordinary page gestures');
   await context.close();
 
+  // Directly tapping the music button first must not start and immediately pause.
+  context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto(url);await page.waitForFunction(()=>window.vibecatDepth?.status().ready);
+  await page.getByRole('button',{name:'Play hip-hop',exact:true}).tap();
+  await page.waitForFunction(()=>document.querySelector('#music').getAttribute('aria-pressed')==='true');
+  await page.getByRole('button',{name:'Pause hip-hop',exact:true}).tap();
+  await page.waitForFunction(()=>document.querySelector('#music').getAttribute('aria-pressed')==='false');
+  await page.touchscreen.tap(40,40);await page.waitForTimeout(150);
+  assert.equal(await page.locator('#music').getAttribute('aria-pressed'),'false','Later touch restarted manually paused music');
+  await context.close();
+
   context=await browser.newContext({viewport:{width:800,height:900},reducedMotion:'reduce'});
   page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(url);await page.waitForFunction(()=>window.vibecatDepth?.status().ready);
@@ -147,7 +173,7 @@ try{
   assert.equal(await page.locator('#depth-view').isVisible(),false);
   assert.equal(await page.locator('#depth-toggle').isDisabled(),true);
   await context.close();assert.deepEqual(errors,[]);
-  const report={passed:true,measuredDisplayFps,changedCatPixelFraction:changed,singleStaticDepthRequest:true,noExternalRuntimeRequests:true,sourcePaintingUnwarped:true,animationAndLampPreserved:true,reducedMotion:true,webglFallback:true,phoneWidths:[390,320],touchDrag:true,touchReleaseAndCancel:true,touchDial:true,dialKeyboard:true,dialBottomCenter:true,noControlOverlap:true,errors};
+  const report={passed:true,measuredDisplayFps,changedCatPixelFraction:changed,singleStaticDepthRequest:true,noExternalRuntimeRequests:true,sourcePaintingUnwarped:true,animationAndLampPreserved:true,reducedMotion:true,webglFallback:true,phoneWidths:[390,320],touchDrag:true,touchReleaseAndCancel:true,touchDial:true,dialKeyboard:true,dialBottomCenter:true,noControlOverlap:true,firstClickMusic:true,firstTouchMusic:true,manualMusicPausePreserved:true,errors};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}

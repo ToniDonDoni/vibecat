@@ -11,8 +11,8 @@ A living, code-painted cafe scene with an orange cat, a laptop, coffee, and an e
 - Individual steam particles rise, curl, disperse, and respawn above the coffee.
 - Light rain crosses the unobstructed window areas, and the cat occasionally blinks.
 - The animation runs continuously without a timeline reset. Pause it, change the evening rhythm, or enter full screen using the lower-right controls.
-- Select **Play the groove** in the lower-left corner to start the music. The tempo slider adjusts the beat from 50 to 140 BPM (74 by default), including during playback. A separate volume slider appears while music plays. Audio starts only after a user gesture and can be paused independently of the animation.
-- The animation respects the browser's reduced-motion preference. Music remains opt-in.
+- The **first click or tap anywhere on the page** starts the groove and reveals the volume slider, just like the music-note button. After that, only the music button toggles playback; other page gestures never pause it or undo a manual pause. A first click on the music button also starts only once. The tempo slider adjusts the beat from 50 to 140 BPM (74 by default), including during playback. A separate volume slider appears while music plays. Audio starts only after a user gesture and can be paused independently of the animation.
+- The animation respects the browser's reduced-motion preference. The page loads silently; music starts only after the first user click or tap.
 - Move the pointer across the painting for a small depth-based viewpoint change.
   Drag the compact **3D** arc at the bottom center to turn the view. A short tap
   toggles depth; Left/Right arrows adjust it by keyboard and Home centers it.
