@@ -38,9 +38,18 @@ try{
     return changed/total;
   },{a:left.toString('base64'),b:right.toString('base64')});
   assert(changed>.05,'The cat image did not visibly change with the viewpoint');
-  await page.locator('#depth-angle').fill('65');await page.locator('#depth-angle').dispatchEvent('input');
+  const dial=page.locator('#depth-toggle');
+  await dial.press('Home');for(let i=0;i<4;i++)await dial.press('ArrowRight');
   await page.waitForTimeout(350);
-  assert(Math.abs((await page.evaluate(()=>vibecatDepth.status())).x-.65)<.03,'Keyboard-accessible view slider did not update camera');
+  assert(Math.abs((await page.evaluate(()=>vibecatDepth.status())).x-.6)<.03,'Dial arrow keys did not update camera');
+  await dial.press('Home');
+  const dialBox=await dial.boundingBox();
+  await page.mouse.move(dialBox.x+dialBox.width/2,dialBox.y+dialBox.height/2);await page.mouse.down();
+  await page.mouse.move(dialBox.x+dialBox.width/2+85,dialBox.y+dialBox.height/2,{steps:5});
+  assert((await page.evaluate(()=>vibecatDepth.status())).targetX>.6,'Mouse drag did not turn the dial');
+  await page.mouse.up();await page.waitForTimeout(450);
+  assert((await page.evaluate(()=>vibecatDepth.status())).enabled,'Dial drag accidentally toggled 3D off');
+  assert(Math.abs((await page.evaluate(()=>vibecatDepth.status())).x)<.02,'Mouse dial release did not center');
   // The original lamp click still reaches the 2D source under the overlay.
   const sceneBox=await page.locator('#scene').boundingBox();
   await page.mouse.click(sceneBox.x+sceneBox.width*167/1024,sceneBox.y+sceneBox.height*150/1024);
@@ -57,10 +66,20 @@ try{
   assert(after.sourceFrames>before.sourceFrames,'The original animation stopped');
   assert(after.textureVersion>=before.textureVersion,'Live texture did not update');
   await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
-  for(const width of [390,320]){
-    await page.setViewportSize({width,height:844});await page.waitForTimeout(200);
-    const bounds=await page.locator('.depth-control').boundingBox();
+  await page.getByRole('button',{name:'Play hip-hop',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#soundbar').classList.contains('playing'));
+  for(const [width,height] of [[390,844],[320,844],[844,390]]){
+    await page.setViewportSize({width,height});await page.waitForTimeout(200);
+    const bounds=await page.locator('.depth-control').boundingBox(),art=await page.locator('#painting').boundingBox();
+    assert(bounds.width===58&&bounds.height>=44,'Dial touch target changed');
+    assert(Math.abs(bounds.x+bounds.width/2-art.x-art.width/2)<1,'Dial is not centered');
+    assert(art.y+art.height-bounds.y-bounds.height<=16,'Dial is not at the bottom');
     assert(bounds.x>=0&&bounds.x+bounds.width<=width,'Depth controls overflow the phone');
+    for(const selector of ['.soundbar','.toolbar','.tempo-control']){
+      const other=await page.locator(selector).boundingBox();
+      const overlap=bounds.x<other.x+other.width&&bounds.x+bounds.width>other.x&&bounds.y<other.y+other.height&&bounds.y+bounds.height>other.y;
+      assert(!overlap,`Dial overlaps ${selector} at ${width}x${height}`);
+    }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.screenshot({path:path.join(out,`phone-${width}.png`),fullPage:true});
   }
@@ -97,13 +116,16 @@ try{
   await touch('touchStart',from);await touch('touchMove',to);await touch('touchCancel');await page.waitForTimeout(500);
   touchState=await page.evaluate(()=>vibecatDepth.status());
   assert(Math.abs(touchState.x)<.02&&Math.abs(touchState.y)<.02,'Cancelled gesture left the camera stuck');
-  // A gesture beginning on the native slider stays with that slider.
-  const sliderBox=await page.locator('#depth-angle').boundingBox();
-  const sliderY=sliderBox.y+sliderBox.height/2;
-  await touch('touchStart',{x:sliderBox.x+sliderBox.width/2,y:sliderY});
-  await touch('touchMove',{x:sliderBox.x+sliderBox.width-4,y:sliderY});
-  await touch('touchEnd');await page.waitForTimeout(350);
-  assert((await page.evaluate(()=>vibecatDepth.status())).targetX>.5,'Touch camera capture intercepted the slider');
+  // Drag the small dial beyond its bounds; capture retains the same gesture.
+  const touchDial=await page.locator('#depth-toggle').boundingBox();
+  const dialFrom={x:touchDial.x+touchDial.width/2,y:touchDial.y+touchDial.height/2};
+  await touch('touchStart',dialFrom);
+  for(let i=1;i<=8;i++){await touch('touchMove',{x:dialFrom.x-i*10,y:dialFrom.y});await page.waitForTimeout(20);}
+  assert((await page.evaluate(()=>vibecatDepth.status())).targetX<-.6,'Finger did not drag the 3D dial');
+  await touch('touchEnd');await page.waitForTimeout(450);
+  touchState=await page.evaluate(()=>vibecatDepth.status());
+  assert(touchState.enabled,'Finger drag accidentally toggled 3D');
+  assert(Math.abs(touchState.x)<.02,'Finger dial release did not center');
   await page.locator('#depth-toggle').tap();
   assert.equal(await page.locator('#depth-view').isVisible(),false,'Touch toggle stopped working');
   assert.notEqual(await page.locator('#scene').evaluate(c=>getComputedStyle(c).touchAction),'none','Depth off still blocks ordinary page gestures');
@@ -125,7 +147,7 @@ try{
   assert.equal(await page.locator('#depth-view').isVisible(),false);
   assert.equal(await page.locator('#depth-toggle').isDisabled(),true);
   await context.close();assert.deepEqual(errors,[]);
-  const report={passed:true,measuredDisplayFps,changedCatPixelFraction:changed,singleStaticDepthRequest:true,noExternalRuntimeRequests:true,sourcePaintingUnwarped:true,animationAndLampPreserved:true,reducedMotion:true,webglFallback:true,phoneWidths:[390,320],touchDrag:true,touchReleaseAndCancel:true,touchSlider:true,errors};
+  const report={passed:true,measuredDisplayFps,changedCatPixelFraction:changed,singleStaticDepthRequest:true,noExternalRuntimeRequests:true,sourcePaintingUnwarped:true,animationAndLampPreserved:true,reducedMotion:true,webglFallback:true,phoneWidths:[390,320],touchDrag:true,touchReleaseAndCancel:true,touchDial:true,dialKeyboard:true,dialBottomCenter:true,noControlOverlap:true,errors};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}

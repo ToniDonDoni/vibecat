@@ -4,14 +4,14 @@
 (() => {
   const source=document.getElementById('scene'),view=document.getElementById('depth-view');
   const painting=document.getElementById('painting'),button=document.getElementById('depth-toggle');
-  const slider=document.getElementById('depth-angle'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const state={ready:false,enabled:!reduced.matches,error:null,x:0,y:0,targetX:0,targetY:0,sourceFrames:0,displayFrames:0,sourceVersion:0,textureVersion:0,displayHz:0};
   let gl=null,program=null,uniforms=null,colorTexture=null,dirty=true,haveSource=false;
-  let previous=performance.now(),statsTime=previous,statsFrames=0,dragPointer=null;
+  let previous=performance.now(),statsTime=previous,statsFrames=0,dragPointer=null,dialDrag=null;
   function updateButton(){
-    button.disabled=!state.ready;button.textContent=state.enabled&&state.ready?'3D ON':'3D OFF';
+    button.disabled=!state.ready;
     button.setAttribute('aria-pressed',String(state.enabled&&state.ready));
-    slider.disabled=!state.ready||!state.enabled;
+    button.setAttribute('aria-label',state.enabled?'3D on. Drag to rotate; tap to turn off':'3D off. Tap or drag to enable');
     view.style.display=state.ready&&state.enabled&&haveSource?'block':'none';
     painting.classList.toggle('depth-active',state.ready&&state.enabled);
   }
@@ -23,8 +23,8 @@
     for(const key of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,key,gl.LINEAR);
     return t;
   }
-  function setTarget(x,y=0){state.targetX=Math.max(-1,Math.min(1,x));state.targetY=Math.max(-1,Math.min(1,y));slider.value=String(Math.round(state.targetX*100));dirty=true;}
-  function enable(value){state.enabled=!!value&&state.ready;if(!state.enabled)finishDrag();dirty=true;updateButton();}
+  function setTarget(x,y=0){state.targetX=Math.max(-1,Math.min(1,x));state.targetY=Math.max(-1,Math.min(1,y));button.style.setProperty('--arc-tilt',state.targetX*7+'deg');dirty=true;}
+  function enable(value){state.enabled=!!value&&state.ready;if(!state.enabled){finishDrag();finishDial(null,true);setTarget(0,0);}dirty=true;updateButton();}
   function draw(){
     if(!state.ready||!state.enabled||!haveSource)return;
     gl.useProgram(program);
@@ -70,9 +70,36 @@
     followPointer(event);
   });
   for(const name of ['pointerup','pointercancel','lostpointercapture'])painting.addEventListener(name,event=>finishDrag(event.pointerId));
-  painting.addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'&&dragPointer===null)setTarget(0,0)});
-  button.addEventListener('click',()=>enable(!state.enabled));
-  slider.addEventListener('input',()=>setTarget(Number(slider.value)/100));
+  painting.addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'&&dragPointer===null&&dialDrag===null)setTarget(0,0)});
+  // A short tap toggles; a captured drag rotates without producing a toggle.
+  function finishDial(event,cancelled=false){
+    if(!dialDrag||(event&&event.pointerId!==dialDrag.id))return;
+    const ended=dialDrag;dialDrag=null;button.classList.remove('dragging');
+    if(button.hasPointerCapture(ended.id))button.releasePointerCapture(ended.id);
+    if(ended.moved){setTarget(0,0);return;}
+    if(!cancelled&&event){const box=button.getBoundingClientRect();if(event.clientX>=box.left&&event.clientX<=box.right&&event.clientY>=box.top&&event.clientY<=box.bottom)enable(!state.enabled);}
+  }
+  button.addEventListener('pointerdown',event=>{
+    if(!state.ready||!event.isPrimary||(event.pointerType==='mouse'&&event.button!==0))return;
+    dialDrag={id:event.pointerId,x:event.clientX,y:event.clientY,angle:state.targetX,moved:false};button.setPointerCapture(event.pointerId);
+  });
+  button.addEventListener('pointermove',event=>{
+    if(!dialDrag||event.pointerId!==dialDrag.id)return;
+    const dx=event.clientX-dialDrag.x,dy=event.clientY-dialDrag.y;
+    if(Math.hypot(dx,dy)>4)dialDrag.moved=true;
+    if(!dialDrag.moved)return;
+    if(!state.enabled)enable(true);
+    button.classList.add('dragging');setTarget(dialDrag.angle+dx/120,0);
+  });
+  button.addEventListener('pointerup',event=>finishDial(event));
+  for(const name of ['pointercancel','lostpointercapture'])button.addEventListener(name,event=>finishDial(event,true));
+  // Native keyboard and assistive clicks have detail=0; pointer taps were handled above.
+  button.addEventListener('click',event=>{if(event.detail===0)enable(!state.enabled)});
+  button.addEventListener('keydown',event=>{
+    if(!state.ready||!['ArrowLeft','ArrowRight','Home'].includes(event.key))return;
+    event.preventDefault();if(event.key!=='Home'&&!state.enabled)enable(true);
+    setTarget(event.key==='Home'?0:state.targetX+(event.key==='ArrowRight'?.15:-.15),0);
+  });
   reduced.addEventListener('change',event=>{if(event.matches){enable(false);setTarget(0,0)}});
   view.addEventListener('webglcontextlost',event=>{event.preventDefault();fail('Graphics context lost');});
   window.vibecatDepth={

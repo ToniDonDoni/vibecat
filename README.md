@@ -14,7 +14,8 @@ A living, code-painted cafe scene with an orange cat, a laptop, coffee, and an e
 - Select **Play the groove** in the lower-left corner to start the music. The tempo slider adjusts the beat from 50 to 140 BPM (74 by default), including during playback. A separate volume slider appears while music plays. Audio starts only after a user gesture and can be paused independently of the animation.
 - The animation respects the browser's reduced-motion preference. Music remains opt-in.
 - Move the pointer across the painting for a small depth-based viewpoint change.
-  **3D ON/OFF** toggles it; **VIEW** provides a keyboard-accessible horizontal angle.
+  Drag the compact **3D** arc at the bottom center to turn the view. A short tap
+  toggles depth; Left/Right arrows adjust it by keyboard and Home centers it.
 
 ## Depth parallax experiment
 
@@ -34,7 +35,9 @@ of this first experiment.
 Pointer movement is smoothed and returns to center on exit. On a touchscreen,
 drag a finger directly across the painting to change the viewpoint. The picture
 keeps the active gesture until release or cancellation, then eases back to center.
-Sliders and buttons keep their normal touch behavior; page gestures remain
+The upward arc and its arrowheads form a 58 x 44 px control at the bottom center.
+Dragging it does not toggle 3D; a short tap toggles it. Native music controls keep
+their normal touch behavior; page gestures remain
 available outside the picture and when 3D is off. The effect starts
 disabled with reduced motion. A missing map or unavailable WebGL leaves the
 original painting usable. The controls remain outside the warped image. A small

@@ -16,8 +16,10 @@
     <div class="loading" id="loading">Turning on the lights...</div>
     <canvas id="depth-view" width="1024" height="1024" aria-hidden="true"></canvas>
     <div class="depth-control" role="group" aria-label="Picture depth">
-      <button id="depth-toggle" type="button" aria-pressed="false" disabled title="Toggle depth parallax">3D LOADING</button>
-      <label for="depth-angle">VIEW <input id="depth-angle" type="range" min="-100" max="100" step="1" value="0" disabled aria-label="3D view angle"></label>
+      <button id="depth-toggle" type="button" aria-pressed="false" aria-label="Toggle 3D; drag to rotate" aria-keyshortcuts="ArrowLeft ArrowRight Home" disabled title="Drag to rotate. Tap to toggle 3D.">
+        <span class="depth-arc" aria-hidden="true"><span class="depth-curve"></span><span class="depth-arrow left"></span><span class="depth-arrow right"></span></span>
+        <span class="depth-label" aria-hidden="true">3D</span>
+      </button>
     </div>
     <div class="tempo-control">
       <label for="bpm">TEMPO <output id="bpmValue" for="bpm">74 BPM</output></label>

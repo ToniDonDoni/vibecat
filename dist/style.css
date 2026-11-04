@@ -4,13 +4,23 @@
 .tempo-control{position:absolute;left:15px;bottom:74px;display:grid;gap:3px;width:165px;padding:8px 11px 7px;border:1px solid #e6d5b425;border-radius:13px;background:#17232cc4;backdrop-filter:blur(12px)}.tempo-control label{display:flex;justify-content:space-between;gap:12px;font-size:9px;letter-spacing:.08em;color:#eee3c9}.tempo-control output{color:#e2c18a;font-variant-numeric:tabular-nums}.tempo-control input{width:100%;height:15px;margin:0;accent-color:#d5b682;cursor:pointer;touch-action:pan-x}.tempo-control:focus-within{outline:1px solid #d5b68266}@media(max-width:600px){.tempo-control{left:10px;bottom:67px;width:152px}}
 
 #depth-view{display:none;pointer-events:none}
-.depth-control{position:absolute;right:15px;top:15px;display:flex;align-items:center;gap:8px;padding:5px 11px 5px 5px;border:1px solid #e6d5b425;border-radius:24px;background:#17232cc4;backdrop-filter:blur(12px)}
-.depth-control button{width:auto;min-width:57px;padding:0 9px;font-size:10px;letter-spacing:.06em;border-radius:18px}
-.depth-control button[aria-pressed="true"]{color:#e2c18a}
-.depth-control label{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.06em;color:#eee3c9}
-.depth-control input{width:65px;height:24px;margin:0;accent-color:#d5b682;touch-action:pan-x}
-.depth-control button:disabled,.depth-control input:disabled{opacity:.55}
-@media(max-width:600px){.depth-control{right:10px;top:10px;gap:4px}.depth-control input{width:58px}footer{flex-wrap:wrap;height:auto;min-height:37px;padding-bottom:6px}}
+.depth-control{position:absolute;left:50%;bottom:15px;transform:translateX(-50%);width:58px;height:44px;z-index:2}
+.depth-control button{position:relative;width:58px;height:44px;min-width:44px;border:0;padding:0;border-radius:24px;background:#17232cb8;backdrop-filter:blur(10px);color:#f2dfb6;touch-action:none;user-select:none;cursor:ew-resize;-webkit-tap-highlight-color:transparent}
+.depth-control button:hover,.depth-control button.dragging{background:#17232ce6;outline:none;color:#ffe9b9}
+.depth-control button:focus-visible{outline:2px solid #e2c18a;outline-offset:3px}
+.depth-control button[aria-pressed="false"]{color:#a3afb1}
+.depth-control button:disabled{opacity:.55;cursor:default}
+.depth-arc{position:absolute;inset:0;transform:rotate(var(--arc-tilt,0deg));transition:transform .12s ease}
+.depth-curve{position:absolute;left:16%;right:16%;height:18px;top:7px;border:1.5px solid currentColor;border-bottom:0;border-radius:50% 50% 0 0/100% 100% 0 0}
+.depth-arrow{position:absolute;top:21px;width:6px;height:6px;border-bottom:1.5px solid currentColor}
+.depth-arrow.left{left:calc(16% - 2px);border-left:1.5px solid currentColor;transform:rotate(-25deg)}
+.depth-arrow.right{right:calc(16% - 2px);border-right:1.5px solid currentColor;transform:rotate(25deg)}
+.depth-label{position:absolute;inset:18px 0 auto;text-align:center;font:500 11px/14px Arial,sans-serif;letter-spacing:.03em}
+.painting{container-type:inline-size}
+@media(max-width:600px){.depth-control{bottom:10px}footer{flex-wrap:wrap;height:auto;min-height:37px;padding-bottom:6px}}
+/* Reserve a center slot even in short landscape windows and when volume is open. */
+@container(max-width:500px){.soundbar{left:10px;bottom:10px;gap:3px;padding-right:9px;max-width:calc(50% - 42px)}.soundbar button span{display:none}.soundbar button{padding:0 6px;min-width:34px;width:34px;justify-content:center}.soundbar input{width:40px}.toolbar{right:10px;bottom:10px}.depth-control{bottom:10px}}
+@container(max-width:350px){.toolbar{width:85px;flex-wrap:wrap;justify-content:center;gap:5px;border-radius:22px}.toolbar button{width:34px;height:34px}}
 
 /* Reserve gestures only on the active picture; native controls keep their touch behavior. */
 .painting.depth-active #scene{touch-action:none}
