@@ -11,3 +11,6 @@
 .depth-control input{width:65px;height:24px;margin:0;accent-color:#d5b682;touch-action:pan-x}
 .depth-control button:disabled,.depth-control input:disabled{opacity:.55}
 @media(max-width:600px){.depth-control{right:10px;top:10px;gap:4px}.depth-control input{width:58px}footer{flex-wrap:wrap;height:auto;min-height:37px;padding-bottom:6px}}
+
+/* Reserve gestures only on the active picture; native controls keep their touch behavior. */
+.painting.depth-active #scene{touch-action:none}

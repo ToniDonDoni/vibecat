@@ -7,12 +7,13 @@
   const slider=document.getElementById('depth-angle'),reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const state={ready:false,enabled:!reduced.matches,error:null,x:0,y:0,targetX:0,targetY:0,sourceFrames:0,displayFrames:0,sourceVersion:0,textureVersion:0,displayHz:0};
   let gl=null,program=null,uniforms=null,colorTexture=null,dirty=true,haveSource=false;
-  let previous=performance.now(),statsTime=previous,statsFrames=0;
+  let previous=performance.now(),statsTime=previous,statsFrames=0,dragPointer=null;
   function updateButton(){
     button.disabled=!state.ready;button.textContent=state.enabled&&state.ready?'3D ON':'3D OFF';
     button.setAttribute('aria-pressed',String(state.enabled&&state.ready));
     slider.disabled=!state.ready||!state.enabled;
     view.style.display=state.ready&&state.enabled&&haveSource?'block':'none';
+    painting.classList.toggle('depth-active',state.ready&&state.enabled);
   }
   function fail(error){state.error=String(error.message||error);state.enabled=false;state.ready=false;button.title='3D unavailable. The original painting is still active.';updateButton();}
   function shader(type,code){const s=gl.createShader(type);gl.shaderSource(s,code);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
@@ -23,7 +24,7 @@
     return t;
   }
   function setTarget(x,y=0){state.targetX=Math.max(-1,Math.min(1,x));state.targetY=Math.max(-1,Math.min(1,y));slider.value=String(Math.round(state.targetX*100));dirty=true;}
-  function enable(value){state.enabled=!!value&&state.ready;dirty=true;updateButton();}
+  function enable(value){state.enabled=!!value&&state.ready;if(!state.enabled)finishDrag();dirty=true;updateButton();}
   function draw(){
     if(!state.ready||!state.enabled||!haveSource)return;
     gl.useProgram(program);
@@ -46,13 +47,30 @@
     if(now-statsTime>1000){state.displayHz=statsFrames*1000/(now-statsTime);statsFrames=0;statsTime=now;}
     requestAnimationFrame(frame);
   }
-  painting.addEventListener('pointermove',event=>{
-    if(event.target.closest('button,input,label,.toolbar,.soundbar,.tempo-control,.depth-control'))return;
+  const isControl=target=>target.closest('button,input,label,.toolbar,.soundbar,.tempo-control,.depth-control');
+  function followPointer(event){
     const box=source.getBoundingClientRect(),size=Math.min(box.width,box.height);
     const left=box.left+(box.width-size)/2,top=box.top+(box.height-size)/2;
     setTarget((event.clientX-left)/size*2-1,(event.clientY-top)/size*2-1);
+  }
+  function finishDrag(pointerId){
+    if(dragPointer===null||(pointerId!==undefined&&pointerId!==dragPointer))return;
+    const ended=dragPointer;dragPointer=null;
+    if(painting.hasPointerCapture(ended))painting.releasePointerCapture(ended);
+    setTarget(0,0);
+  }
+  painting.addEventListener('pointerdown',event=>{
+    if(!state.ready||!state.enabled||!event.isPrimary||event.pointerType==='mouse'||isControl(event.target))return;
+    dragPointer=event.pointerId;painting.setPointerCapture(dragPointer);followPointer(event);
   });
-  painting.addEventListener('pointerleave',()=>setTarget(0,0));
+  painting.addEventListener('pointermove',event=>{
+    if(!state.ready||!state.enabled||isControl(event.target))return;
+    if(dragPointer!==null&&event.pointerId!==dragPointer)return;
+    if(event.pointerType!=='mouse'&&event.pointerId!==dragPointer)return;
+    followPointer(event);
+  });
+  for(const name of ['pointerup','pointercancel','lostpointercapture'])painting.addEventListener(name,event=>finishDrag(event.pointerId));
+  painting.addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'&&dragPointer===null)setTarget(0,0)});
   button.addEventListener('click',()=>enable(!state.enabled));
   slider.addEventListener('input',()=>setTarget(Number(slider.value)/100));
   reduced.addEventListener('change',event=>{if(event.matches){enable(false);setTarget(0,0)}});

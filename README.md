@@ -31,7 +31,11 @@ WebGL output never becomes input to the source painting. The fixed depth map doe
 not follow the small moving lamps and steam exactly; that approximation is part
 of this first experiment.
 
-Pointer movement is smoothed and returns to center on exit. The effect starts
+Pointer movement is smoothed and returns to center on exit. On a touchscreen,
+drag a finger directly across the painting to change the viewpoint. The picture
+keeps the active gesture until release or cancellation, then eases back to center.
+Sliders and buttons keep their normal touch behavior; page gestures remain
+available outside the picture and when 3D is off. The effect starts
 disabled with reduced motion. A missing map or unavailable WebGL leaves the
 original painting usable. The controls remain outside the warped image. A small
 crop leaves room for near layers to shift without exposing the frame edges.

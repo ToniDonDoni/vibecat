@@ -68,6 +68,47 @@ try{
   assert(requests.every(r=>new URL(r).origin===new URL(url).origin),'An external runtime request was made');
   await context.close();
 
+  // Use real browser touch dispatch, so scroll arbitration can cancel pointers.
+  context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+  page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
+  await page.addInitScript(()=>{window.__touchCancels=0;document.addEventListener('pointercancel',()=>window.__touchCancels++);});
+  await page.goto(url);await page.waitForFunction(()=>window.vibecatDepth?.status().textureVersion>0);
+  await page.getByRole('button',{name:'Pause animation',exact:true}).tap();
+  const touchSession=await context.newCDPSession(page);
+  const touchBox=await page.locator('#painting').boundingBox();
+  const from={x:touchBox.x+touchBox.width*.2,y:touchBox.y+touchBox.height*.35};
+  const to={x:touchBox.x+touchBox.width*.8,y:touchBox.y+touchBox.height*.65};
+  const touch=async(type,point)=>touchSession.send('Input.dispatchTouchEvent',{type,touchPoints:point?[{...point,id:1,radiusX:4,radiusY:4}]:[]});
+  await touch('touchStart',from);
+  for(let i=1;i<=10;i++){
+    await touch('touchMove',{x:from.x+(to.x-from.x)*i/10,y:from.y+(to.y-from.y)*i/10});
+    await page.waitForTimeout(25);
+  }
+  await page.waitForTimeout(180);
+  const dragged=await page.evaluate(()=>({state:vibecatDepth.status(),cancels:window.__touchCancels}));
+  assert(dragged.state.targetX>.5&&dragged.state.targetY>.2,`Touch drag lost its endpoint: ${JSON.stringify(dragged)}`);
+  assert(dragged.state.x>.35&&dragged.state.y>.1,'Touch drag did not visibly turn the painting');
+  assert.equal(dragged.cancels,0,'Browser scrolling cancelled the active camera drag');
+  await page.screenshot({path:path.join(out,'touch-drag.png'),fullPage:true});
+  await touch('touchEnd');await page.waitForTimeout(500);
+  let touchState=await page.evaluate(()=>vibecatDepth.status());
+  assert(Math.abs(touchState.x)<.02&&Math.abs(touchState.y)<.02,'Finger release did not return the view to center');
+  // A cancelled gesture must also release capture and return to center.
+  await touch('touchStart',from);await touch('touchMove',to);await touch('touchCancel');await page.waitForTimeout(500);
+  touchState=await page.evaluate(()=>vibecatDepth.status());
+  assert(Math.abs(touchState.x)<.02&&Math.abs(touchState.y)<.02,'Cancelled gesture left the camera stuck');
+  // A gesture beginning on the native slider stays with that slider.
+  const sliderBox=await page.locator('#depth-angle').boundingBox();
+  const sliderY=sliderBox.y+sliderBox.height/2;
+  await touch('touchStart',{x:sliderBox.x+sliderBox.width/2,y:sliderY});
+  await touch('touchMove',{x:sliderBox.x+sliderBox.width-4,y:sliderY});
+  await touch('touchEnd');await page.waitForTimeout(350);
+  assert((await page.evaluate(()=>vibecatDepth.status())).targetX>.5,'Touch camera capture intercepted the slider');
+  await page.locator('#depth-toggle').tap();
+  assert.equal(await page.locator('#depth-view').isVisible(),false,'Touch toggle stopped working');
+  assert.notEqual(await page.locator('#scene').evaluate(c=>getComputedStyle(c).touchAction),'none','Depth off still blocks ordinary page gestures');
+  await context.close();
+
   context=await browser.newContext({viewport:{width:800,height:900},reducedMotion:'reduce'});
   page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(url);await page.waitForFunction(()=>window.vibecatDepth?.status().ready);
@@ -84,7 +125,7 @@ try{
   assert.equal(await page.locator('#depth-view').isVisible(),false);
   assert.equal(await page.locator('#depth-toggle').isDisabled(),true);
   await context.close();assert.deepEqual(errors,[]);
-  const report={passed:true,measuredDisplayFps,changedCatPixelFraction:changed,singleStaticDepthRequest:true,noExternalRuntimeRequests:true,sourcePaintingUnwarped:true,animationAndLampPreserved:true,reducedMotion:true,webglFallback:true,phoneWidths:[390,320],errors};
+  const report={passed:true,measuredDisplayFps,changedCatPixelFraction:changed,singleStaticDepthRequest:true,noExternalRuntimeRequests:true,sourcePaintingUnwarped:true,animationAndLampPreserved:true,reducedMotion:true,webglFallback:true,phoneWidths:[390,320],touchDrag:true,touchReleaseAndCancel:true,touchSlider:true,errors};
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}
