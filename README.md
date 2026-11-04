@@ -36,19 +36,77 @@ disabled with reduced motion. A missing map or unavailable WebGL leaves the
 original painting usable. The controls remain outside the warped image. A small
 crop leaves room for near layers to shift without exposing the frame edges.
 
-To regenerate depth on an Apple Silicon Mac, use Python 3.11 with the optional
-packages in `scripts/depth-requirements.txt`, then run:
+### Build the depth map locally
+
+Use an Apple Silicon Mac and Python 3.11. Run from the repository root:
 
 ```sh
-python scripts/make_depth.py --model PATH_TO/DepthAnythingV2SmallF16.mlpackage
+python3.11 -m venv output/depth-venv
+. output/depth-venv/bin/activate
+python -m pip install -r scripts/depth-requirements.txt
+python scripts/build.py
 ```
 
-The official package is [Apple's Core ML Small FP16 model](https://huggingface.co/apple/coreml-depth-anything-v2-small).
-Its pinned revision, source/depth/weights hashes and package versions are recorded
-in `dist/assets/cafe-depth.json`. The model is licensed Apache-2.0. Letterboxing
-preserves the square image's proportions in the 518 x 392 model input; prediction
-padding is removed before saving the 512 x 512 map. White means nearer, not a
-distance in meters. Timing reports stay under ignored `output/depth/`.
+The build calls `scripts/make_depth.py`. The generator calls
+`scripts/download_depth_model.py` if the official Apple Small FP16 model is not
+already cached. Downloads use a pinned Hugging Face revision and verify the
+manifest, model graph and weight checksums. A complete verified cache is reused
+without a network request; incomplete or corrupt downloads are repaired.
+
+The roughly 50 MB package stays in ignored
+`output/models/DepthAnythingV2SmallF16.mlpackage/`. Hub metadata and caches also
+stay under ignored `output/`. Do not commit model weights or the Python environment.
+To download only the model, run `python scripts/download_depth_model.py`.
+
+To reuse a package already stored elsewhere:
+
+```sh
+python scripts/build.py --model PATH_TO/DepthAnythingV2SmallF16.mlpackage
+```
+
+`python scripts/make_depth.py` also works on its own and downloads the model when
+needed. Both generation commands require macOS Core ML. The static website does
+not need the model after the map is baked.
+
+The generated files to commit are:
+
+- `dist/assets/cafe-depth.png`: the 512 x 512 depth image used by the browser.
+- `dist/assets/cafe-depth.json`: source, map, generator and model hashes, pinned
+  model revision and package versions.
+
+The official package is [Apple's Core ML Small FP16 model](https://huggingface.co/apple/coreml-depth-anything-v2-small),
+licensed Apache-2.0. Letterboxing preserves the square image's proportions in the
+518 x 392 input; prediction padding is removed before saving. White means nearer,
+not a distance in meters. Local timing reports stay under ignored `output/depth/`.
+
+### Before pushing or publishing with Actions
+
+**Bake on the Mac first, then commit and push the depth PNG and JSON together
+with the source image and relevant script changes.** For example, after changing
+the cafe artwork:
+
+```sh
+python scripts/build.py
+python scripts/build.py --check
+git add dist/assets/cafe.jpg dist/assets/cafe-depth.png dist/assets/cafe-depth.json
+git commit -m "Bake depth for updated cafe artwork"
+git push
+```
+
+When changing the build or generator, also commit those scripts, this README and
+the workflow changes. Updating `scripts/make_depth.py` requires rebaking because
+the metadata records its hash.
+
+GitHub Actions runs **`python3 scripts/build.py --check`** on Linux. This uses only
+the Python standard library: it does not install Core ML, download weights or run
+inference. It verifies the committed map, source/generator/model hashes, complete
+PNG and local website resources before uploading `dist/` to Pages. Missing or
+stale depth fails the workflow with instructions to rebuild on macOS and commit
+both generated files. The model is not included in the Pages artifact.
+
+Run the build/cache failure checks locally with `python3 scripts/check_build.py`.
+Serving the already-built website still needs only the normal static HTTP server
+described below.
 
 An optional browser check requires Playwright and Chromium, with the static server
 already running. Set `PLAYWRIGHT_MODULE` for an existing Playwright installation
@@ -122,7 +180,7 @@ python scripts/draw_vibecat.py
 python scripts/make_layers.py
 ```
 
-The first command that draws artwork writes BMP and JPEG files into `output/`. The layer generator updates the committed web assets in `dist/assets/`. Commit those updated assets when changing the drawing.
+The first command that draws artwork writes BMP and JPEG files into `output/`. The layer generator updates the committed web assets in `dist/assets/`. Commit those updated assets when changing the drawing. Then run `python scripts/build.py` on the Mac and commit the updated depth PNG and JSON as well; otherwise Actions rejects the stale depth.
 
 ## Check the project
 
@@ -157,7 +215,10 @@ The workflow checks the JavaScript and project contents, configures Pages, uploa
 | `scripts/draw_vibecat.py` | Complete original drawing and direct BMP writer |
 | `scripts/make_layers.py` | Animated-layer asset generator |
 | `scripts/check.mjs` | Source, asset, and audio checks |
-| `scripts/make_depth.py` | Optional local Core ML depth baking |
+| `scripts/build.py` | Local depth build and dependency-free CI validation |
+| `scripts/download_depth_model.py` | Pinned, verified model download into ignored local cache |
+| `scripts/make_depth.py` | Local Core ML depth baking |
+| `scripts/check_build.py` | Missing/stale-map and model-cache regression checks |
 | `scripts/check-parallax.mjs` | Browser checks and parallax captures |
 | `.github/workflows/pages.yml` | Automatic and manual Pages publication |
 

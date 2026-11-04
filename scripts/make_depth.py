@@ -3,27 +3,38 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import platform
 import time
 
-import coremltools as ct
-import numpy as np
-import PIL
-from PIL import Image
+from download_depth_model import MODEL_ID, PACKAGE, REVISION, ensure_model, model_errors, sha256
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model', type=Path, required=True)
+    parser.add_argument('--model', type=Path, help='Reuse an existing package; otherwise download to output/models/.')
     parser.add_argument('--runs', type=int, default=6)
     args = parser.parse_args()
     if args.runs < 1:
         parser.error('--runs must be positive')
+    if platform.system() != 'Darwin':
+        parser.error('Depth generation requires macOS Core ML; use scripts/build.py --check in CI.')
+    try:
+        import coremltools as ct
+        import numpy as np
+        import PIL
+        from PIL import Image
+    except ImportError:
+        parser.error('Install scripts/depth-requirements.txt in a local Python 3.11 environment first.')
+    model_path = args.model or ensure_model()
+    problems = model_errors(model_path)
+    if problems:
+        parser.error('; '.join(problems))
     image_path = ROOT / 'dist/assets/cafe.jpg'
     source = Image.open(image_path).convert('RGB')
     started = time.perf_counter()
-    model = ct.models.MLModel(str(args.model), compute_units=ct.ComputeUnit.ALL)
+    model = ct.models.MLModel(str(model_path), compute_units=ct.ComputeUnit.ALL)
     load_seconds = time.perf_counter() - started
     spec = model.get_spec()
     feature = spec.description.input[0]
@@ -55,20 +66,21 @@ def main():
     output = ROOT / 'dist/assets/cafe-depth.png'
     Image.fromarray(np.round(normalized * 255).astype(np.uint8)).save(output)
     provenance = {
-        'model': 'apple/coreml-depth-anything-v2-small',
-        'revision': 'cfef6f6f2a70783dedc0bfae40cecbc2052285d3',
-        'variant': 'DepthAnythingV2SmallF16.mlpackage',
+        'model': MODEL_ID,
+        'revision': REVISION,
+        'variant': PACKAGE,
         'license': 'Apache-2.0',
         'source': 'assets/cafe.jpg',
         'source_sha256': hashlib.sha256(image_path.read_bytes()).hexdigest(),
         'depth_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
+        'generator_sha256': sha256(Path(__file__)),
         'input_size': [width, height], 'depth_size': [512, 512],
         'preprocessing': 'aspect-preserving letterbox; remove padding from prediction',
         'semantics': 'relative inverse depth; white is near; not meters',
         'normalization_percentiles': [1, 99],
         'versions': {'coremltools': ct.__version__, 'numpy': np.__version__, 'pillow': PIL.__version__},
     }
-    weights = args.model / 'Data/com.apple.CoreML/weights/weight.bin'
+    weights = model_path / 'Data/com.apple.CoreML/weights/weight.bin'
     if weights.is_file():
         provenance['weights_sha256'] = hashlib.sha256(weights.read_bytes()).hexdigest()
     (ROOT / 'dist/assets/cafe-depth.json').write_text(json.dumps(provenance, indent=2) + '\n')

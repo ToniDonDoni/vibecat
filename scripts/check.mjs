@@ -10,7 +10,7 @@ const binary=new Set(['.png','.jpg','.bmp','.wav','.pyc']);
 let checked=0;
 function inspect(directory){
   for(const entry of fs.readdirSync(directory,{withFileTypes:true})){
-    if(ignored.has(entry.name))continue;
+    if(ignored.has(entry.name)||/\.sw[op]$/.test(entry.name))continue;
     const target=path.join(directory,entry.name);
     assert(!entry.isSymbolicLink(),`Unexpected symbolic link: ${entry.name}`);
     if(entry.isDirectory()){inspect(target);continue;}
