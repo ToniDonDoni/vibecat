@@ -58,6 +58,7 @@ function render(dt){
     ctx.save();ctx.beginPath();ctx.ellipse(x,y,rx,ry,-.12,0,TAU);ctx.clip();
     ctx.fillStyle='#cd975e';ctx.fillRect(x-rx-2,y-ry-2,rx*2+4,(ry*2+4)*closure*.56);ctx.fillRect(x-rx-2,y+ry-(ry*2+4)*closure*.48,rx*2+4,ry*2+4);ctx.restore();
   }}
+  window.vibecatDepth?.sourceChanged();
 }
 function frame(now){
   if(!ready)return;

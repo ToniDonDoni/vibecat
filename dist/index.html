@@ -14,6 +14,13 @@
     <img id="poster" src="assets/cafe.jpg" alt="An orange cat in a green cardigan vibe-codes on a laptop in an evening cafe, with coffee and a croissant.">
     <canvas id="scene" width="1024" height="1024" aria-label="A living painting: lamps sway, windows flicker, and steam rises from a coffee cup."></canvas>
     <div class="loading" id="loading">Turning on the lights...</div>
+    <canvas id="depth-view" width="1024" height="1024" aria-hidden="true"></canvas>
+    <div class="depth-control" role="group" aria-label="Picture depth">
+      <button id="depth-toggle" type="button" aria-pressed="false" aria-label="Toggle 3D; drag to rotate" aria-keyshortcuts="ArrowLeft ArrowRight Home" disabled title="Drag to rotate. Tap to toggle 3D.">
+        <span class="depth-arc" aria-hidden="true"><span class="depth-curve"></span><span class="depth-arrow left"></span><span class="depth-arrow right"></span></span>
+        <span class="depth-label" aria-hidden="true">3D</span>
+      </button>
+    </div>
     <div class="tempo-control">
       <label for="bpm">TEMPO <output id="bpmValue" for="bpm">74 BPM</output></label>
       <input id="bpm" type="range" min="50" max="140" step="1" value="74" aria-label="Music tempo in BPM" title="Music tempo">
@@ -31,8 +38,9 @@
       <button id="fullscreen" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4"/></svg></button>
     </div>
   </div>
-  <footer><span>the cat codes. the city stays awake.</span><span class="hint">tap a lamp</span></footer>
+  <footer><span>the cat codes. the city stays awake.</span><span class="hint">move to explore / tap a lamp</span></footer>
 </main>
+<script src="parallax.js"></script>
 <script src="scene.js"></script>
 <script type="module" src="music.mjs"></script>
 </body>

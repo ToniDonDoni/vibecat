@@ -2,7 +2,7 @@ import{GrooveSynth,SAMPLE_RATE,BPM,MIN_BPM,MAX_BPM}from'./groove-core.mjs';
 const button=document.getElementById('music'),label=document.getElementById('musicLabel'),volume=document.getElementById('volume'),tempo=document.getElementById('bpm'),tempoValue=document.getElementById('bpmValue');
 let context,master,synth,nextBar=0,nextTime=0,timer=null,tempoTimer=null,busy=false,playing=false;
 const scheduled=new Map();
-let bpm=BPM;
+let bpm=BPM,firstGestureUsed=false;
 let volumeValue=.62;
 try{const stored=localStorage.getItem('vibecat-volume');if(stored!==null)volumeValue=Math.max(0,Math.min(1,Number(stored)||0));}catch{}
 volume.value=Math.round(volumeValue*100);
@@ -89,7 +89,13 @@ tempo.addEventListener('input',()=>{
   // Avoid rendering a whole look-ahead queue on every drag event.
   tempoTimer=setTimeout(applyTempo,100);
 });
-button.addEventListener('click',toggle);
+// Consume the one-time shortcut before async audio startup or document bubbling.
+button.addEventListener('click',()=>{firstGestureUsed=true;return toggle();});
+document.addEventListener('click',event=>{
+  if(firstGestureUsed||!event.isTrusted)return;
+  firstGestureUsed=true;
+  return toggle();
+});
 volume.addEventListener('input',()=>{
   volumeValue=Number(volume.value)/100;
   if(master&&playing)master.gain.setTargetAtTime(volumeValue*.95,context.currentTime,.025);
